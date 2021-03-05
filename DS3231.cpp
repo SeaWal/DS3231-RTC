@@ -1,9 +1,14 @@
 #include <iostream>
 #include <ctime>
 #include <iomanip>
+#include <fstream>
+#include <unistd.h>
+#include <string>
 
 #include "Device.h"
 #include "DS3231.h"
+
+using std::string;
 
 // DS3231 Registers
 #define SECONDS 	0x00	// seconds register
@@ -34,16 +39,34 @@
  * @param bus : The bus number (e.g. i2c-1)
  * @param device : The address of the device in the bus (e.g. 0x68)
  */ 
-DS3231::DS3231(unsigned int bus, unsigned int device) : Device(bus, device)
+DS3231::DS3231(unsigned int bus, unsigned int device, bool hasBattery) : Device(bus, device)
 {
-	// autoset the time and date
-	std::time_t t = std::time(0);
-	std::tm* now = std::localtime(&t);
-	int yr = (now->tm_year+1900) - 2000;
-	this->writeToReg(DAY, now->tm_wday);
-	this->setDate(yr, now->tm_mon+1, now->tm_mday);
-	this->setTime(now->tm_hour, now->tm_min, now->tm_sec);
+	if(!hasBattery){
+		// autoset the time and date
+		std::time_t t = std::time(0);
+		std::tm* now = std::localtime(&t);
+		int yr = (now->tm_year+1900) - 2000;
+		this->writeToReg(DAY, now->tm_wday);
+		this->setDate(yr, now->tm_mon+1, now->tm_mday);
+		this->setTime(now->tm_hour, now->tm_min, now->tm_sec);
+	}
 }
+
+
+/**
+ * Write the value to the file in sysfs
+ * 
+ * @param path : The path to the sysfs file
+ * @param fname : The name of the file to write to
+ * @param value: The value to be written
+ */
+ void DS3231::writeSysfs(string path, string fname, string value)
+ {
+	 std::ofstream fs; // open output stream to file
+	 fs.open( (path+fname).c_str() );
+	 fs << value;
+	 fs.close();
+ }
 
 
 /**
@@ -215,4 +238,93 @@ bool DS3231::isAlarmSet(bool which)
 	this->writeToReg(CTRLSTAT, status);
 	return alarmFlag;
 }
-		
+
+
+/**
+ * Flash the LED at the given gpio number for
+ * n_iters (default 5 iterations)
+ * 
+ * @param gpioNumber : The gpio pin number to drive
+ * @param n_iters : The number of iterations to perform
+ */ 
+void DS3231::flashLED(int gpioNumber, int n_iters)
+{
+	using std::to_string;
+	
+	string path = "/sys/class/gpio/";
+	string ledPath = path + "gpio" + to_string(gpioNumber) + "/";
+	this->writeSysfs(path, "export", to_string(gpioNumber));
+	usleep(10000);
+	this->writeSysfs(ledPath, "direction", "out");
+	usleep(10000);	
+	
+	// flash the LED on/off for n_iters
+	for(int i=0; i<=n_iters; i++) {
+		this->writeSysfs(ledPath, "value", "1");
+		usleep(500000);
+		this->writeSysfs(ledPath, "value", "0");
+		usleep(500000);
+	}
+	
+	this->writeSysfs(path, "unexport", to_string(gpioNumber));
+}
+
+
+/**
+ * Toggle the INTCN bit to enable/disable SQW
+ * 
+ * @param enable : 1 to enable INTCN, 0 to disable
+ */ 
+void DS3231::toggleSQWInt(bool enable)
+{
+	unsigned char ctrl = this->readControlReg();
+	if(enable)
+		ctrl |= (1<<2);
+	else
+		ctrl &= (0xfb);
+	
+	this->writeToReg(CTRLREG, ctrl);
+}
+
+
+/**
+ * Set the frequency of the squarewave output
+ * 
+ * @param Freq f : Select from the enumerated frequency
+ * 				   options (LOW, MLOW, MHIGH, HIGH)
+ */  
+void DS3231::setSQWFreq(DS3231::Freq f)
+{
+	unsigned char ctrl = this->readControlReg();
+	switch(f)
+	{
+		case DS3231::Freq::LOW:
+			std::cout << "Setting low SQW Freq = 1 Hz" << std::endl;
+			ctrl &= (0xe7);
+			break;
+			
+		case DS3231::Freq::MLOW:
+			std::cout << "Setting mid-low SQW Freq = 1.024 kHz" << std::endl;
+			ctrl |= (0x08);
+			break;
+			
+		case DS3231::Freq::MHIGH:
+			std::cout << "Setting mid-high SQW Freq = 4.096 kHz" << std::endl;
+			ctrl |= (0x10);
+			ctrl &= (0xf7);
+			break;
+			
+		case DS3231::Freq::HIGH:
+			std::cout << "Setting high SQW Freq = 8.192 kHz" << std::endl;
+			ctrl |= (0x18);
+			break;
+			
+		default:
+			std::cout << "Setting default SQW Freq = 1Hz" << std::endl;
+			ctrl &= (0xe7);
+			break;
+	}
+	
+	this->writeToReg(CTRLREG, ctrl);
+}
+	
