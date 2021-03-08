@@ -41,7 +41,7 @@ using std::string;
  */ 
 DS3231::DS3231(unsigned int bus, unsigned int device, bool hasBattery) : Device(bus, device)
 {
-	if(!hasBattery){
+	if(hasBattery){
 		// autoset the time and date
 		std::time_t t = std::time(0);
 		std::tm* now = std::localtime(&t);
@@ -209,6 +209,27 @@ void DS3231::setAlarm(bool which, int hr, int min, int day, bool mode)
 	}
 	
 	printf("Alarm set for %02d:%02d\n", hr, min);
+}
+
+/**
+* Read and display the time the alarm is set for
+*
+* @param which : 0 for alarm 1, 1 for alarm 2
+*/
+void DS3231::readAlarm(bool which)
+{
+	unsigned char hr = 0;
+	unsigned char min = 0;
+	if(which==0){
+		hr = this->readFromReg(ALHR);
+		min = this->readFromReg(ALMIN);
+	}
+	else {
+		hr = this->readFromReg(AL2HR);
+		min = this->readFromReg(AL2MIN);
+	}
+	
+	printf("Alarm set for %02d:%02d\n", bcd2dec(hr), bcd2dec(min));
 }
 
 

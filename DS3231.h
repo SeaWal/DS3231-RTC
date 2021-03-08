@@ -28,6 +28,7 @@ class DS3231 : public Device
 		virtual unsigned char readControlReg();
 		virtual void writeControlReg(unsigned char bit);
 		virtual void setAlarm(bool which, int hr, int min, int day, bool mode=0);
+		virtual void readAlarm(bool which=0);
 		virtual bool isAlarmSet(bool which);
 		virtual void flashLED(int gpioNumber, int n_iters=5);
 		virtual void toggleSQWInt(bool enable);
