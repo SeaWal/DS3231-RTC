@@ -218,15 +218,14 @@ void DS3231::setAlarm(bool which, int hr, int min, int day, bool mode)
 */
 void DS3231::readAlarm(bool which)
 {
-	unsigned char hr = 0;
-	unsigned char min = 0;
-	if(which==0){
-		hr = this->readFromReg(ALHR);
-		min = this->readFromReg(ALMIN);
-	}
-	else {
-		hr = this->readFromReg(AL2HR);
-		min = this->readFromReg(AL2MIN);
+	
+	
+	unsigned char hr = this->readFromReg(ALHR);
+	unsigned char min = this->readFromReg(ALMIN);
+
+	if(which==1) {
+		unsigned char hr = this->readFromReg(AL2HR);
+		unsigned char min = this->readFromReg(AL2MIN);
 	}
 	
 	printf("Alarm set for %02d:%02d\n", bcd2dec(hr), bcd2dec(min));

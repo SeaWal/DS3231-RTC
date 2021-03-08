@@ -13,7 +13,7 @@ int main()
 
 	// (alarm number, hour, minute, day/date, alarm mode)
 	rtc.setAlarm(0, 19, 02, 5);
-	
+	rtc.readAlarm();
 	
 	// demonstrating alarm trigger which flashes LED
 	for(int i=0; i<100; i++)
