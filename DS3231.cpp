@@ -14,7 +14,7 @@ using std::string;
 #define SECONDS 	0x00	// seconds register
 #define MINUTES 	0x01	// minutes register
 #define HOURS   	0x02	// hours register
-#define DAY			0x03	// day of week
+#define DAY		0x03	// day of week
 #define DATE		0x04	// day of month
 #define MONTH		0x05	// month
 #define YEAR		0x06	// year
@@ -38,10 +38,11 @@ using std::string;
  * 
  * @param bus : The bus number (e.g. i2c-1)
  * @param device : The address of the device in the bus (e.g. 0x68)
+ * @param hasBattery : indicate whether a battery is connected to the RTC
  */ 
 DS3231::DS3231(unsigned int bus, unsigned int device, bool hasBattery) : Device(bus, device)
 {
-	if(hasBattery){
+	if(!hasBattery){
 		// autoset the time and date
 		std::time_t t = std::time(0);
 		std::tm* now = std::localtime(&t);
